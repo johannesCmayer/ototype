@@ -1,0 +1,7 @@
+/.direnv/
+*~
+*.ogg
+*.opus
+*.wav
+/system-wide-stt
+/system-wide-stt-bin

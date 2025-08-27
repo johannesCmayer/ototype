@@ -1,0 +1,7 @@
+#!/bin/sh
+
+sbcl --eval "(require 'asdf)" \
+     --eval '(push #P"/home/johannes/projects/system-wide-stt/" asdf:*central-registry*)' \
+     --eval '(load "~/quicklisp/setup.lisp")' \
+     --eval "(asdf:make :system-wide-stt)" \
+     --quit
