@@ -5,8 +5,10 @@
                    :compression t))
 
 (asdf:defsystem system-wide-stt
-  :components ((:file "package")
-               (:file "main"))
+  :components ((:file "packages")
+               (:file "transcription")
+               (:file "wave")
+               (:file "ototype"))
   :depends-on (:cl-portaudio
                :dexador
                :jonathan
@@ -14,5 +16,5 @@
                :alexandria
                :bordeaux-threads)
   :build-operation "program-op"
-  :build-pathname "system-wide-stt-bin"
-  :entry-point "mic-rec:transcribe-with-keypress-interupt")
+  :build-pathname "ototype-bin"
+  :entry-point "ototype:transcribe-with-keypress-interupt")

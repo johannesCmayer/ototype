@@ -5,3 +5,5 @@
 *.wav
 /system-wide-stt
 /system-wide-stt-bin
+/ototype
+/ototype-bin
