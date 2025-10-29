@@ -4,7 +4,7 @@
                    :executable t
                    :compression t))
 
-(asdf:defsystem system-wide-stt
+(asdf:defsystem #:ototype
   :components ((:file "packages")
                (:file "transcription")
                (:file "wave")

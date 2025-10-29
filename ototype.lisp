@@ -1,6 +1,14 @@
 (in-package :ototype)
 
+(defparameter *temporary-directory*
+  (uiop:subpathname (uiop:temporary-directory) "ototype/"))
+
+(ensure-directories-exist *temporary-directory*)
+
+(defparameter out-file (uiop:subpathname *temporary-directory* #P"transcription.wav"))
+
 (defmacro comment (&body body)
+  (declare (ignore body))
   nil)
 
 (defun clamp (x &optional (minimum 0.0) (maximum 1.0))
@@ -15,47 +23,49 @@
 
 (defun record-start (output-path)
   (setf *recording* t)
-  (let ((frames-per-buffer 64)
-        (sample-rate 44100d0)
-        (bits-per-frame 16))
+  (let* ((frames-per-buffer 256)
+         (sample-rate 44100d0)
+         (bits-per-frame 16)
+         (conversion-buffer (make-array frames-per-buffer :element-type '(signed-byte 16))))
     (with-audio
-      (with-default-audio-stream (audio-stream
-                                  1
-                                  1
-                                  :sample-format :float
-                                  :sample-rate sample-rate
-                                  :frames-per-buffer frames-per-buffer)
-        ;; Write placeholder header
-        (with-open-file (file-stream output-path
-                                     :direction :output
-                                     :element-type `(unsigned-byte 8)
-                                     :if-exists :supersede)
-          (write-wav-header-placeholder file-stream))
-        (let ((number-of-frames 0))
-          ;; Stream audio data to file
+        (with-default-audio-stream (audio-stream
+                                    1
+                                    1
+                                    :sample-format :float
+                                    :sample-rate sample-rate
+                                    :frames-per-buffer frames-per-buffer)
+          ;; Write placeholder header
           (with-open-file (file-stream output-path
                                        :direction :output
-                                       :element-type `(signed-byte ,bits-per-frame)
-                                       :if-exists :append)
-            (loop while *recording* do
-              (let ((data (read-stream audio-stream)))
-                (write-sequence (map 'vector #'float-to-int16 data) file-stream))
-              (setf number-of-frames (+ number-of-frames frames-per-buffer))))
-          ;; Write proper header
-          (with-open-file (file-stream output-path
-                                       :direction :output
-                                       :element-type '(unsigned-byte 8)
-                                       :if-exists :overwrite)
-            (write-wav-header file-stream
-                              (truncate sample-rate)
-                              1
-                              bits-per-frame
-                              (* (/ bits-per-frame 8) number-of-frames))))))))
+                                       :element-type `(unsigned-byte 8)
+                                       :if-exists :supersede
+                                       :if-does-not-exist :create)
+            (write-wav-header-placeholder file-stream))
+          (let ((number-of-frames 0))
+            ;; Stream audio data to file
+            (with-open-file (file-stream output-path
+                                         :direction :output
+                                         :element-type `(signed-byte ,bits-per-frame)
+                                         :if-exists :append)
+              (loop while *recording* do
+                (let ((data (read-stream audio-stream)))
+                  (dotimes (i frames-per-buffer)
+                    (setf (aref conversion-buffer i) (float-to-int16 (aref data i))))
+                  (write-sequence conversion-buffer file-stream))
+                (incf number-of-frames frames-per-buffer)))
+            ;; Write proper header
+            (with-open-file (file-stream output-path
+                                         :direction :output
+                                         :element-type '(unsigned-byte 8)
+                                         :if-exists :overwrite)
+              (write-wav-header file-stream
+                                (truncate sample-rate)
+                                1
+                                bits-per-frame
+                                (* (/ bits-per-frame 8) number-of-frames))))))))
 
 (defun record-stop ()
   (setf *recording* nil))
-
-(defparameter out-file #P"transcription.wav")
 
 (defun transcribe-start ()
   (record-start out-file))
@@ -78,7 +88,7 @@
   (format t "~A~%" (transcribe-file out-file)))
 
 (defun save-core ()
-  (sb-ext:save-lisp-and-die "system-wide-stt-bin"
+  (sb-ext:save-lisp-and-die "ototype-bin"
                             :toplevel 'transcribe-with-keypress-interupt
                             :executable t
                             :compression t))
